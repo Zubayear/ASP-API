@@ -18,6 +18,7 @@ builder.Services.AddDbContext<MovieContext>(optionsBuilder =>
     optionsBuilder.UseSqlServer(builder.Configuration.GetConnectionString("MoviesDBConnString")));
 
 builder.Services.AddScoped<IActorRepository, ActorRepository>();
+builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")

@@ -19,8 +19,8 @@ public class ActorRepository : IActorRepository, IDisposable
     {
         _logger.LogInformation("Actor id: {ActorId}", actorId);
         if (actorId == Guid.Empty) throw new ArgumentNullException(nameof(actorId));
-        if (_movieContext.Actors == null) throw new InvalidOperationException(nameof(_movieContext));
-        return await _movieContext.Actors.FindAsync(actorId) ?? throw new InvalidOperationException(nameof(_movieContext));
+        if (_movieContext.Actors == null) throw new InvalidOperationException(nameof(_movieContext.Actors));
+        return await _movieContext.Actors.FindAsync(actorId) ?? throw new InvalidOperationException(nameof(_movieContext.Actors));
     }
 
     public async Task SaveActor(Actor actor)

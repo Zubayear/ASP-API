@@ -11,6 +11,6 @@ remove_migration:
 update_db:
 	@dotnet ef database update
 
-.PHONY: run
-run:
+.PHONY: run_movie_service
+run_movie_service:
 	@dotnet watch run
