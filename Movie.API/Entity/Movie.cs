@@ -5,6 +5,8 @@ namespace Movie.API.Entity;
 
 public class Movie
 {
+    private List<ActorMovie> _actorMovies;
+
     [Key]
     public Guid Id { get; set; }
     [Required]
@@ -17,6 +19,10 @@ public class Movie
     public decimal Rating { get; set; }
     [Required]
     public int ReleaseYear { get; set; }
-    
-    public List<ActorMovie> ActorMovies { get; set; }
+
+    public List<ActorMovie> ActorMovies
+    {
+        get => _actorMovies;
+        set => _actorMovies = value;
+    }
 }

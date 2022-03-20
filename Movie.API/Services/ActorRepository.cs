@@ -20,14 +20,19 @@ public class ActorRepository : IActorRepository, IDisposable
         _logger.LogInformation("Actor id: {ActorId}", actorId);
         if (actorId == Guid.Empty) throw new ArgumentNullException(nameof(actorId));
         if (_movieContext.Actors == null) throw new InvalidOperationException(nameof(_movieContext.Actors));
-        return await _movieContext.Actors.FindAsync(actorId) ?? throw new InvalidOperationException(nameof(_movieContext.Actors));
+        return await _movieContext.Actors.FindAsync(actorId) ??
+               throw new InvalidOperationException(nameof(_movieContext.Actors));
     }
 
-    public async Task SaveActor(Actor actor)
+    public async Task<Actor> SaveActor(Actor actor)
     {
-        _logger.LogInformation("Actor to save in db: {@Actor}", actor);
-        if (actor == null) throw new ArgumentNullException(nameof(actor));
-        if (_movieContext.Actors != null) await _movieContext.Actors.AddAsync(actor);
+        _logger.LogInformation("Actor to save in db: {Actor}", actor);
+        if (actor == null) 
+            throw new ArgumentNullException(nameof(actor));
+        if (_movieContext.Actors == null) 
+            throw new ArgumentNullException(nameof(_movieContext.Actors));
+        var savedActor = await _movieContext.Actors.AddAsync(actor);
+        return savedActor.Entity;
     }
 
     public async Task DeleteActor(Guid actorId)
@@ -40,7 +45,7 @@ public class ActorRepository : IActorRepository, IDisposable
 
     public void UpdateActor(Actor actor)
     {
-        _logger.LogInformation("Actor to update in db: {@Actor}", actor);
+        _logger.LogInformation("Actor to update in db: {Actor}", actor);
         if (actor == null) throw new ArgumentNullException(nameof(actor));
         _movieContext.Entry(actor).State = EntityState.Modified;
     }

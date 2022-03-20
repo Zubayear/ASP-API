@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Movie.API.Entity;
 using Movie.API.Filters;
 using Movie.API.Services;
 
@@ -23,7 +24,7 @@ public class ActorsController : ControllerBase
 
     [HttpGet(Name = nameof(GetAllActors))]
     [ActorsResultFilter]
-    public async Task<IActionResult> GetAllActors()
+    public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors()
     {
         _logger.LogInformation("Received ActorsController.GetActors request");
         return Ok(await _actorRepository.GetActors());
@@ -31,7 +32,7 @@ public class ActorsController : ControllerBase
 
     [HttpGet("{actorId}", Name = nameof(GetActor))]
     [ActorResultFilter]
-    public async Task<IActionResult> GetActor([FromRoute] Guid actorId)
+    public async Task<ActionResult<Actor>> GetActor([FromRoute] Guid actorId)
     {
         _logger.LogInformation("Received ActorsController.GetActor request: {ActorId}", actorId);
         return Ok(await _actorRepository.GetActorById(actorId));
@@ -39,18 +40,13 @@ public class ActorsController : ControllerBase
 
     [HttpPost(Name = nameof(CreateActor))]
     [ActorResultFilter]
-    public async Task<IActionResult> CreateActor(Models.ActorForCreation actorForCreation)
+    public async Task<ActionResult<Actor>> CreateActor(Models.ActorForCreation actorForCreation)
     {
-        _logger.LogInformation("Received ActorsController.CreateActor request: {@Author}", actorForCreation);
-        var actorToSave = _mapper.Map<Entity.Actor>(actorForCreation);
-        await _actorRepository.SaveActor(actorToSave);
-        var isSaved = await _actorRepository.SaveChanges();
-        if (!isSaved)
-        {
-            throw new InvalidOperationException(nameof(isSaved));
-        }
-
-        return CreatedAtRoute(nameof(GetActor), new { actorId = actorToSave.Id }, actorToSave);
+        _logger.LogInformation("Received ActorsController.CreateActor request: {Actor}", actorForCreation);
+        var actorToSave = _mapper.Map<Actor>(actorForCreation);
+        var savedActor = await _actorRepository.SaveActor(actorToSave);
+        // return Ok(savedActor);
+        return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, savedActor);
     }
 
     [HttpDelete("{actorId}", Name = nameof(RemoveActor))]
@@ -65,7 +61,8 @@ public class ActorsController : ControllerBase
 
     [HttpPut("{actorId}", Name = nameof(FullUpdateActor))]
     [ActorResultFilter]
-    public async Task<IActionResult> FullUpdateActor([FromRoute] Guid actorId, Models.ActorForUpdate actorForUpdate)
+    public async Task<ActionResult<Actor>> FullUpdateActor([FromRoute] Guid actorId,
+        Models.ActorForUpdate actorForUpdate)
     {
         _logger.LogInformation("Received ActorsController.FullUpdateActor request: {AuthorId}; {@ActorUpdate}", actorId,
             actorForUpdate);
