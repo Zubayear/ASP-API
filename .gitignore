@@ -273,5 +273,5 @@ __pycache__/
 
 Movie.API/logs
 Movie.API/appsettings.json
-
+MovieAPI.Test/actors.db
 # End of https://www.gitignore.io/api/aspnetcore

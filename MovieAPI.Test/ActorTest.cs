@@ -1,9 +1,15 @@
 using System;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Movie.API.Context;
 using Movie.API.Controllers;
 using Movie.API.Models;
 using Movie.API.Services;
@@ -19,6 +25,12 @@ public class ActorTest
     private readonly Mock<IActorRepository> _actorRepositoryMock = new();
     private readonly Mock<ILogger<ActorsController>> _loggerMock = new();
     private readonly Mock<IMapper> _mapperMock = new();
+    private readonly Mock<MovieContext> _movieContextMock = new();
+    private readonly Mock<ILogger<ActorRepository>> _repoLoggerMock = new();
+    private readonly Mock<DbSet<Actor>> _actorDbSetMock = new();
+    private DbContextOptions<MovieContext> _dbContextOptions;
+    private MovieContext _movieContext;
+    private SqliteConnection _connection;
 
     public ActorTest(ITestOutputHelper testOutputHelper)
     {
@@ -43,7 +55,7 @@ public class ActorTest
         var result = actionResult.Result as OkObjectResult;
         Assert.Equal(result.Value, actor);
     }
-    
+
     [Fact]
     public async void CreateActorTest()
     {
@@ -68,7 +80,7 @@ public class ActorTest
         _testOutputHelper.WriteLine(result.Value.ToString());
         // Assert.Equal(result.Value, actor);
     }
-    
+
     [Fact]
     public async void GetAllActorsTest()
     {
@@ -79,5 +91,18 @@ public class ActorTest
         var actionResult = await actorsController.GetAllActors();
         var result = actionResult.Result as OkObjectResult;
         Assert.Equal(result.Value, ImmutableList<Actor>.Empty);
+    }
+
+    [Fact]
+    public async void RemoveActorTest()
+    {
+        var actorId = Guid.NewGuid();
+        _actorRepositoryMock.Setup(repository =>
+            repository.DeleteActor(actorId));
+        ActorsController actorsController =
+            new ActorsController(_actorRepositoryMock.Object, _loggerMock.Object, _mapperMock.Object);
+        await actorsController.RemoveActor(actorId);
+        // var result = actionResult as NoContentResult;
+        // Assert.Equal(result.Value, ImmutableList<Actor>.Empty);
     }
 }

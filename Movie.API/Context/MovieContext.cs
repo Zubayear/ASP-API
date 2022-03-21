@@ -12,6 +12,10 @@ public class MovieContext : DbContext
     {
     }
 
+    public MovieContext()
+    {
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var decimalProps = modelBuilder.Model

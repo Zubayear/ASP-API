@@ -5,8 +5,6 @@ namespace Movie.API.Entity;
 
 public class Movie
 {
-    private List<ActorMovie> _actorMovies;
-
     [Key]
     public Guid Id { get; set; }
     [Required]
@@ -20,9 +18,10 @@ public class Movie
     [Required]
     public int ReleaseYear { get; set; }
 
-    public List<ActorMovie> ActorMovies
+    public List<ActorMovie> ActorMovies = new List<ActorMovie>();
+
+    public override string ToString()
     {
-        get => _actorMovies;
-        set => _actorMovies = value;
+        return $"{nameof(ActorMovies)}: {ActorMovies}, {nameof(Id)}: {Id}, {nameof(Title)}: {Title}, {nameof(Description)}: {Description}, {nameof(Rating)}: {Rating}, {nameof(ReleaseYear)}: {ReleaseYear}";
     }
 }

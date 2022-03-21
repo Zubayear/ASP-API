@@ -1,11 +1,13 @@
+using Movie.API.Entity;
+
 namespace Movie.API.Services;
 
 public interface IActorRepository
 {
-    Task<Entity.Actor> GetActorById(Guid actorId);
-    Task<Entity.Actor> SaveActor(Entity.Actor actor);
+    Task<Actor> GetActorById(Guid actorId);
+    Task<Actor> SaveActor(Actor actor);
     Task DeleteActor(Guid actorId);
-    void UpdateActor(Entity.Actor actor);
-    Task<IEnumerable<Entity.Actor>> GetActors();
+    void UpdateActor(Actor actor);
+    Task<IEnumerable<Actor>> GetActors();
     Task<bool> SaveChanges();
 }
