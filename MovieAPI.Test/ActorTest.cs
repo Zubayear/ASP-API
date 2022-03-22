@@ -1,15 +1,9 @@
 using System;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Movie.API.Context;
 using Movie.API.Controllers;
 using Movie.API.Models;
 using Movie.API.Services;
@@ -25,12 +19,6 @@ public class ActorTest
     private readonly Mock<IActorRepository> _actorRepositoryMock = new();
     private readonly Mock<ILogger<ActorsController>> _loggerMock = new();
     private readonly Mock<IMapper> _mapperMock = new();
-    private readonly Mock<MovieContext> _movieContextMock = new();
-    private readonly Mock<ILogger<ActorRepository>> _repoLoggerMock = new();
-    private readonly Mock<DbSet<Actor>> _actorDbSetMock = new();
-    private DbContextOptions<MovieContext> _dbContextOptions;
-    private MovieContext _movieContext;
-    private SqliteConnection _connection;
 
     public ActorTest(ITestOutputHelper testOutputHelper)
     {
@@ -40,7 +28,7 @@ public class ActorTest
     [Fact]
     public async void GetActorByIdTest()
     {
-        Actor actor = new Actor
+        var actor = new Actor
         {
             Age = 90,
             Id = Guid.Parse("3567d09c-e9c4-49f0-9cd5-61a52c660707"),

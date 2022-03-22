@@ -13,12 +13,12 @@ using Xunit;
 
 namespace MovieAPI.Test;
 
-public class RepoTest
+public class ActorRepositoryTest
 {
     private readonly DbConnection _connection;
     private readonly DbContextOptions<MovieContext> _contextOptions;
 
-    public RepoTest()
+    public ActorRepositoryTest()
     {
         // Create and open a connection. This creates the SQLite in-memory database, which will persist until the connection is closed
         // at the end of the test (see Dispose below).
