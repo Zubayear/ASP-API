@@ -8,7 +8,6 @@ namespace Movie.API.Controllers;
 
 [ApiController]
 [Route("api/actors")]
-[Produces("application/json")]
 public class ActorsController : ControllerBase
 {
     private readonly IActorRepository _actorRepository;

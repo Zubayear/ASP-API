@@ -16,32 +16,44 @@ public class MovieRepository : IMovieRepository, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task SaveMovieWithActor(Guid actorId, Entity.Movie movie)
+    public async Task<Entity.Movie> SaveMovieWithActor(Guid actorId, Entity.Movie movie)
     {
-        _logger.LogInformation("Received MovieRepository.SaveMovieWithActor request: {ActorId}, {@Movie}", actorId,
+        _logger.LogInformation("Received MovieRepository.SaveMovieWithActor request: {ActorId}, {Movie}", actorId,
             movie);
+        
         if (actorId == Guid.Empty) 
             throw new InvalidEnumArgumentException(nameof(actorId));
+        
         if (movie == null) 
             throw new InvalidEnumArgumentException(nameof(movie));
+        
         if (_movieContext.Movies == null) 
             throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
         var savedMovie = await _movieContext.Movies.AddAsync(movie);
         var actorMovie = new ActorMovie
         {
             ActorId = actorId,
             MovieId = savedMovie.Entity.Id
         };
-        if (_movieContext.ActorMovies != null) await _movieContext.ActorMovies.AddAsync(actorMovie);
+        if (_movieContext.ActorMovies != null) 
+            await _movieContext.ActorMovies.AddAsync(actorMovie);
+        var isSaved = await SaveChanges();
+        if (!isSaved)
+            throw new InvalidOperationException(nameof(isSaved));
+        return movie;
     }
 
     public async Task<IEnumerable<Entity.Movie>> GetMoviesForActor(Guid actorId)
     {
         _logger.LogInformation("Received MovieRepository.GetMoviesForActor request: {ActorId}", actorId);
+        
         if (actorId == Guid.Empty) 
             throw new InvalidEnumArgumentException(nameof(actorId));
+        
         if (_movieContext.Movies == null) 
             throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
         return await _movieContext.ActorMovies.Where(actor => actor.ActorId == actorId).Select(movie => movie.Movie).ToListAsync();
     }
 
@@ -53,8 +65,13 @@ public class MovieRepository : IMovieRepository, IDisposable
     public async Task<Entity.Movie> GetMovieById(Guid movieId)
     {
         _logger.LogInformation("Received MovieRepository.GetMovieById request: {MovieId}", movieId);
-        if (movieId == Guid.Empty) throw new InvalidEnumArgumentException(nameof(movieId));
-        if (_movieContext.Movies == null) throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
+        if (movieId == Guid.Empty) 
+            throw new InvalidEnumArgumentException(nameof(movieId));
+        
+        if (_movieContext.Movies == null) 
+            throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
         return await _movieContext.Movies.FindAsync(movieId) ??
                throw new InvalidOperationException(nameof(_movieContext.Movies));
     }
@@ -62,8 +79,13 @@ public class MovieRepository : IMovieRepository, IDisposable
     public async Task<bool> ActorExists(Guid actorId)
     {
         _logger.LogInformation("Received MovieRepository.ActorExists request: {ActorId}", actorId);
-        if (actorId == Guid.Empty) throw new InvalidEnumArgumentException(nameof(actorId));
-        if (_movieContext.Movies == null) throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
+        if (actorId == Guid.Empty) 
+            throw new InvalidEnumArgumentException(nameof(actorId));
+        
+        if (_movieContext.Movies == null) 
+            throw new InvalidOperationException(nameof(_movieContext.Movies));
+        
         return await (_movieContext.Actors ?? throw new InvalidOperationException()).AnyAsync(actor =>
             actor.Id == actorId);
     }
