@@ -22,8 +22,18 @@ public class MoviesController : ControllerBase
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
+    /// <summary>
+    /// Returns a movie by movieId
+    /// </summary>
+    /// <param name="movieId"></param>
+    /// <returns>Returns a movie by movieId</returns>
+    /// <exception cref="InvalidEnumArgumentException"></exception>
+    /// <response code="200">If a movie returned successfully</response>
+    /// <response code="400">If the movieId is wrong</response>
     [HttpGet("{movieId}", Name = nameof(GetMovie))]
     [MovieResultFilter]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Entity.Movie>> GetMovie([FromRoute] Guid movieId)
     {
         _logger.LogInformation("Received MoviesController.GetMovie request: {MovieId}", movieId);
@@ -32,8 +42,21 @@ public class MoviesController : ControllerBase
         return Ok(await _movieRepository.GetMovieById(movieId));
     }
 
+    /// <summary>
+    /// Returns a newly created
+    /// </summary>
+    /// <param name="actorId"></param>
+    /// <param name="movieForCreation"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidEnumArgumentException"></exception>
+    /// <response code="201">If a movie is created successfully</response>
+    /// <response code="400">If actorId is wrong</response>
+    /// <response code="404">If actor doesn't exists</response>
     [HttpPost(Name = nameof(CreateMovieWithActor))]
     [MovieResultFilterAttribute]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Entity.Movie>> CreateMovieWithActor([FromRoute] Guid actorId,
         Models.MovieForCreation movieForCreation)
     {
@@ -55,8 +78,20 @@ public class MoviesController : ControllerBase
         return CreatedAtRoute(nameof(GetMovie), new { actorId, movieId = savedMovie.Id }, savedMovie);
     }
 
+    /// <summary>
+    /// Returns a list of movies with given actorId
+    /// </summary>
+    /// <param name="actorId"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    /// <response code="200">If a movie returned successfully</response>
+    /// <response code="400">If actorId is wrong</response>
+    /// <response code="404">If actor doesn't exists</response>
     [HttpGet(Name = nameof(GetMoviesByAuthorId))]
     [MoviesResultFilterAttribute]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<Entity.Movie>>> GetMoviesByAuthorId([FromRoute] Guid actorId)
     {
         _logger.LogInformation("Received MoviesController.GetMoviesByAuthorId request: {ActorId}", actorId);
