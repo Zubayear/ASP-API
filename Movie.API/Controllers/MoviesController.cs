@@ -37,7 +37,7 @@ public class MoviesController : ControllerBase
     public async Task<ActionResult<Entity.Movie>> GetMovie([FromRoute] Guid movieId)
     {
         _logger.LogInformation("Received MoviesController.GetMovie request: {MovieId}", movieId);
-        if (movieId == Guid.Empty) 
+        if (movieId == Guid.Empty)
             throw new InvalidEnumArgumentException(nameof(movieId));
         return Ok(await _movieRepository.GetMovieById(movieId));
     }
@@ -65,7 +65,7 @@ public class MoviesController : ControllerBase
 
         if (Guid.Empty == actorId || movieForCreation == null)
             throw new InvalidEnumArgumentException(nameof(actorId));
-            // return BadRequest(new { Message = "Actor Id or Movie request is invalid" });
+        // return BadRequest(new { Message = "Actor Id or Movie request is invalid" });
 
         if (!await _movieRepository.ActorExists(actorId))
             throw new InvalidEnumArgumentException(nameof(actorId));
@@ -101,5 +101,23 @@ public class MoviesController : ControllerBase
         var moviesFromRepo = await _movieRepository.GetMoviesForActor(actorId);
 
         return Ok(moviesFromRepo);
+    }
+
+    /// <summary>
+    /// Remove a movie with actorId and movieId
+    /// </summary>
+    /// <param name="actorId"></param>
+    /// <param name="movieId"></param>
+    /// <returns></returns>
+    /// <response code="204">If movie is deleted successfully</response>
+    [HttpDelete("{movieId}", Name = nameof(RemoveMovieWithActorId))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveMovieWithActorId(Guid actorId, Guid movieId)
+    {
+        await _movieRepository.DeleteMovieWithActor(actorId, movieId);
+        var isDeleted = await _movieRepository.SaveChanges();
+        if (!isDeleted)
+            return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "failed deleting movie" });
+        return NoContent();
     }
 }

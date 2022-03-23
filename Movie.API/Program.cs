@@ -3,13 +3,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Movie.API.Context;
 using Movie.API.Services;
+using Newtonsoft.Json.Serialization;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+    {
+        options.ReturnHttpNotAcceptable = true;
+    }).AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+    })
+    .AddXmlDataContractSerializerFormatters();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

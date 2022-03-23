@@ -44,6 +44,20 @@ public class MovieRepository : IMovieRepository, IDisposable
         return movie;
     }
 
+    public async Task DeleteMovieWithActor(Guid actorId, Guid movieId)
+    {
+        if (!await ActorExists(actorId))
+            throw new InvalidOperationException(nameof(actorId));
+        var movieToDelete = await GetMovieById(movieId);
+        _movieContext.Movies.Remove(movieToDelete);
+        var actorMovie = new ActorMovie
+        {
+            ActorId = actorId,
+            MovieId = movieId
+        };
+        _movieContext.ActorMovies.Remove(actorMovie);
+    }
+
     public async Task<IEnumerable<Entity.Movie>> GetMoviesForActor(Guid actorId)
     {
         _logger.LogInformation("Received MovieRepository.GetMoviesForActor request: {ActorId}", actorId);

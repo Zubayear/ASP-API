@@ -1,8 +1,13 @@
 using AutoMapper;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
-using Movie.API.Entity;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Options;
 using Movie.API.Filters;
+using Movie.API.Models;
 using Movie.API.Services;
+using Actor = Movie.API.Entity.Actor;
 
 namespace Movie.API.Controllers;
 
@@ -21,7 +26,7 @@ public class ActorsController : ControllerBase
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
-    
+
     /// <summary>
     /// Get all actors
     /// </summary>
@@ -87,7 +92,7 @@ public class ActorsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<Actor>> CreateActor(Models.ActorForCreation actorForCreation)
+    public async Task<ActionResult<Actor>> CreateActor(ActorForCreation actorForCreation)
     {
         _logger.LogInformation("Received ActorsController.CreateActor request: {Actor}", actorForCreation);
         if (!TryValidateModel(actorForCreation))
@@ -153,11 +158,11 @@ public class ActorsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Actor>> FullUpdateActor([FromRoute] Guid actorId,
-        Models.ActorForUpdate actorForUpdate)
+        ActorForUpdate actorForUpdate)
     {
         _logger.LogInformation("Received ActorsController.FullUpdateActor request: {AuthorId}; {ActorUpdate}", actorId,
             actorForUpdate);
-        if (!TryValidateModel(actorId) && !await TryUpdateModelAsync(actorForUpdate))
+        if (!TryValidateModel(actorId) && !TryValidateModel(actorForUpdate))
             return BadRequest(new { Message = "Actor Id or Actor invalid" });
         try
         {
@@ -174,5 +179,41 @@ public class ActorsController : ControllerBase
             _logger.LogError("Error Occurred ActorsController.FullUpdateActor: {Message}", e.Message);
             return NotFound(new { Message = "failed updating actor" });
         }
+    }
+
+    /// <summary>
+    /// Returns updated actor
+    /// </summary>
+    /// <param name="actorId"></param>
+    /// <param name="patchDocument"></param>
+    /// <returns></returns>
+    /// <response code="204">If actor is updated partially</response>
+    [HttpPatch("{actorId}", Name = nameof(PartiallyUpdateActor))]
+    [ActorResultFilter]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<ActionResult<Actor>> PartiallyUpdateActor(
+        Guid actorId,
+        JsonPatchDocument<ActorForUpdate> patchDocument)
+    {
+        _logger.LogInformation("Received ActorsController.PartiallyUpdateActor request: {@Actor}", patchDocument);
+        if (!TryValidateModel(patchDocument))
+            return BadRequest(new { Message = "Actor is invalid" });
+        var actorFromRepo = await _actorRepository.GetActorById(actorId);
+        var actorToPatch = _mapper.Map<ActorForUpdate>(actorFromRepo);
+        patchDocument.ApplyTo(actorToPatch);
+        if (!TryValidateModel(actorToPatch))
+            return ValidationProblem(ModelState);
+        _mapper.Map(actorToPatch, actorFromRepo);
+        _actorRepository.UpdateActor(actorFromRepo);
+        await _actorRepository.SaveChanges();
+        return NoContent();
+    }
+
+    public override ActionResult ValidationProblem(
+        [ActionResultObjectValue] ModelStateDictionary modelStateDictionary)
+    {
+        var options = HttpContext.RequestServices
+            .GetRequiredService<IOptions<ApiBehaviorOptions>>();
+        return (ActionResult)options.Value.InvalidModelStateResponseFactory(ControllerContext);
     }
 }
