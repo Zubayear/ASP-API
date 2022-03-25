@@ -40,7 +40,7 @@ public class ActorTest
         ActorsController actorsController =
             new ActorsController(_actorRepositoryMock.Object, _loggerMock.Object, _mapperMock.Object);
         var actionResult = await actorsController.GetActor(Guid.Parse("3567d09c-e9c4-49f0-9cd5-61a52c660707"));
-        var result = actionResult.Result as OkObjectResult;
+        var result = actionResult as OkObjectResult;
         Assert.Equal(result.Value, actor);
     }
 

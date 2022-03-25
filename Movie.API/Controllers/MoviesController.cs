@@ -8,6 +8,8 @@ namespace Movie.API.Controllers;
 
 [ApiController]
 [Route("api/actors/{actorId}/movies/")]
+[Produces("application/json", "application/xml")]
+[Consumes("application/json", "application/json-patch+json", "application/*+json")]
 public class MoviesController : ControllerBase
 {
     private readonly IMovieRepository _movieRepository;

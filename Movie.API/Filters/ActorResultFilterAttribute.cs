@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Movie.API.Models;
 
 namespace Movie.API.Filters;
 
@@ -16,8 +17,12 @@ public class ActorResultFilterAttribute : ResultFilterAttribute
         }
 
         var mapper = context.HttpContext.RequestServices.GetRequiredService<IMapper>();
+
+        // storing the odj with links
+        var expandoObjectWithLinks = resultFromAction.Value;
         if (resultFromAction != null)
-            resultFromAction.Value = mapper.Map<Models.Actor>(resultFromAction.Value);
+            resultFromAction.Value = mapper.Map<Actor>(resultFromAction.Value);
+        resultFromAction.Value = expandoObjectWithLinks;
         await next();
     }
 }

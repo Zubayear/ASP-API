@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
+using Movie.API.Extensions;
 using Movie.API.Filters;
 using Movie.API.Models;
 using Movie.API.Services;
@@ -13,6 +14,8 @@ namespace Movie.API.Controllers;
 
 [ApiController]
 [Route("api/actors")]
+[Produces("application/json", "application/xml")]
+[Consumes("application/json", "application/json-patch+json", "application/*+json")]
 public class ActorsController : ControllerBase
 {
     private readonly IActorRepository _actorRepository;
@@ -34,7 +37,7 @@ public class ActorsController : ControllerBase
     /// <response code="200">Returns all Actors</response>
     /// <response code="404">If actors not found</response>
     [HttpGet(Name = nameof(GetAllActors))]
-    [ActorsResultFilter]
+    // [ActorsResultFilter]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors()
@@ -43,7 +46,16 @@ public class ActorsController : ControllerBase
         try
         {
             var actorsFromRepo = await _actorRepository.GetActors();
-            return Ok(actorsFromRepo);
+            var shapedActors = _mapper.Map<IEnumerable<Models.Actor>>(actorsFromRepo)
+                .ShapeData("");
+            var shapedActorWithLinks = shapedActors.Select(actor =>
+            {
+                var actorAsDictionary = actor as IDictionary<string, object>;
+                var actorLinks = CreateLinksForActor((Guid)actorAsDictionary["Id"]);
+                actorAsDictionary.Add($"links", actorLinks);
+                return actorAsDictionary;
+            });
+            return Ok(shapedActorWithLinks);
         }
         catch (Exception e)
         {
@@ -63,14 +75,18 @@ public class ActorsController : ControllerBase
     [ActorResultFilter]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Actor>> GetActor([FromRoute] Guid actorId)
+    public async Task<IActionResult> GetActor([FromRoute] Guid actorId)
     {
         _logger.LogInformation("Received ActorsController.GetActor request: {ActorId}", actorId);
         if (!TryValidateModel(actorId))
             return BadRequest(new { Message = "Actor Id not valid" });
         try
         {
-            return Ok(await _actorRepository.GetActorById(actorId));
+            var actorFromRepo = await _actorRepository.GetActorById(actorId);
+            var links = CreateLinksForActor(actorId);
+            var response = actorFromRepo.ShapeDataForActor("") as IDictionary<string, object>;
+            response.Add("links", links);
+            return Ok(response);
         }
         catch (Exception e)
         {
@@ -101,7 +117,10 @@ public class ActorsController : ControllerBase
         try
         {
             var savedActor = await _actorRepository.SaveActor(actorToSave);
-            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, savedActor);
+            var expandoObj = savedActor.ShapeDataForActor("") as IDictionary<string, object>;
+            var links = CreateLinksForActor(savedActor.Id);
+            expandoObj.Add("links", links);
+            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, expandoObj);
         }
         catch (Exception e)
         {
@@ -172,7 +191,10 @@ public class ActorsController : ControllerBase
             var isUpdated = await _actorRepository.SaveChanges();
             if (!isUpdated)
                 throw new InvalidOperationException(nameof(isUpdated));
-            return Ok(actorFromRepo);
+            var links = CreateLinksForActor(actorId);
+            var response = actorFromRepo.ShapeDataForActor("") as IDictionary<string, object>;
+            response.Add("links", links);
+            return Ok(response);
         }
         catch (Exception e)
         {
@@ -189,7 +211,6 @@ public class ActorsController : ControllerBase
     /// <returns></returns>
     /// <response code="204">If actor is updated partially</response>
     [HttpPatch("{actorId}", Name = nameof(PartiallyUpdateActor))]
-    [ActorResultFilter]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<Actor>> PartiallyUpdateActor(
         Guid actorId,
@@ -215,5 +236,18 @@ public class ActorsController : ControllerBase
         var options = HttpContext.RequestServices
             .GetRequiredService<IOptions<ApiBehaviorOptions>>();
         return (ActionResult)options.Value.InvalidModelStateResponseFactory(ControllerContext);
+    }
+
+    private IEnumerable<ActorLink> CreateLinksForActor(Guid actorId)
+    {
+        var links = new List<ActorLink>
+        {
+            new(Url.Link(nameof(GetActor), new { actorId }), "self", "GET"),
+            new(Url.Link(nameof(RemoveActor), new { actorId }), "delete_actor", "DELETE"),
+            // new(Url.Link(nameof(CreateActor), new {  }), "create_actor", "POST"),
+            new(Url.Link(nameof(FullUpdateActor), new { actorId }), "update_actor", "PUT"),
+            new(Url.Link(nameof(PartiallyUpdateActor), new { actorId }), "partially_update_actor", "PATCH")
+        };
+        return links;
     }
 }

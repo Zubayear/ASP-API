@@ -16,8 +16,10 @@ public class ActorsResultFilterAttribute : ResultFilterAttribute
         }
 
         var mapper = context.HttpContext.RequestServices.GetRequiredService<IMapper>();
+        var expandoObj = resultFromAction.Value;
         if (resultFromAction != null)
             resultFromAction.Value = mapper.Map<IEnumerable<Models.Actor>>(resultFromAction.Value);
+        resultFromAction.Value = expandoObj;
         await next();
     }
 }
