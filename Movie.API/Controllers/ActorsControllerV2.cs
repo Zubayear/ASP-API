@@ -5,27 +5,24 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
 using Movie.API.Extensions;
-using Movie.API.Filters;
 using Movie.API.Models;
 using Movie.API.Services;
-using Actor = Movie.API.Entity.Actor;
 
 namespace Movie.API.Controllers;
 
-[ApiVersion("1.0")]
+[ApiVersion("2.0")]
 [ApiController]
-// [Route("api/v{v:apiVersion}/actors", Order = 1)]
-[Route("api/actors", Order = 1)]
+[Route("api/actors", Order = 2)]
 [Produces("application/json", "application/xml")]
 [Consumes("application/json", "application/json-patch+json", "application/*+json")]
-public class ActorsController : ControllerBase
+public class ActorsControllerV2 : ControllerBase
 {
     private readonly IActorRepository _actorRepository;
-    private readonly ILogger<ActorsController> _logger;
+    private readonly ILogger<ActorsControllerV2> _logger;
     private readonly IMapper _mapper;
 
-    public ActorsController(IActorRepository actorRepository,
-        ILogger<ActorsController> logger, IMapper mapper)
+    public ActorsControllerV2(IActorRepository actorRepository,
+        ILogger<ActorsControllerV2> logger, IMapper mapper)
     {
         _actorRepository = actorRepository ?? throw new ArgumentNullException(nameof(actorRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -39,7 +36,6 @@ public class ActorsController : ControllerBase
     /// <response code="200">Returns all Actors</response>
     /// <response code="404">If actors not found</response>
     [HttpGet(Name = nameof(GetAllActors))]
-    // [ActorsResultFilter]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors()
@@ -48,13 +44,13 @@ public class ActorsController : ControllerBase
         try
         {
             var actorsFromRepo = await _actorRepository.GetActors();
-            var shapedActors = _mapper.Map<IEnumerable<Models.Actor>>(actorsFromRepo)
+            var shapedActors = _mapper.Map<IEnumerable<Actor>>(actorsFromRepo)
                 .ShapeData("");
             var shapedActorWithLinks = shapedActors.Select(actor =>
             {
                 var actorAsDictionary = actor as IDictionary<string, object>;
                 var actorLinks = CreateLinksForActor((Guid)actorAsDictionary["Id"]);
-                actorAsDictionary.Add($"links", actorLinks);
+                actorAsDictionary.Add("links", actorLinks);
                 return actorAsDictionary;
             });
             return Ok(shapedActorWithLinks);
@@ -74,7 +70,6 @@ public class ActorsController : ControllerBase
     /// <response code="200">Returns an actor with actorId</response>
     /// <response code="400">If actorId is wrong</response>
     [HttpGet("{actorId}", Name = nameof(GetActor))]
-    [ActorResultFilter]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetActor([FromRoute] Guid actorId)
@@ -86,7 +81,7 @@ public class ActorsController : ControllerBase
         {
             var actorFromRepo = await _actorRepository.GetActorById(actorId);
             var links = CreateLinksForActor(actorId);
-            var response = actorFromRepo.ShapeDataForActor("") as IDictionary<string, object>;
+            var response = _mapper.Map<Actor>(actorFromRepo).ShapeDataForActor("") as IDictionary<string, object>;
             response.Add("links", links);
             return Ok(response);
         }
@@ -106,7 +101,6 @@ public class ActorsController : ControllerBase
     /// <response code="400">If the actorForCreation is null</response>
     /// <response code="500">If the db is down or problem with saving in db</response>
     [HttpPost(Name = nameof(CreateActor))]
-    [ActorResultFilter]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -115,14 +109,13 @@ public class ActorsController : ControllerBase
         _logger.LogInformation("Received ActorsController.CreateActor request: {Actor}", actorForCreation);
         if (!TryValidateModel(actorForCreation))
             return BadRequest(new { Message = "Invalid actor to create" });
-        var actorToSave = _mapper.Map<Actor>(actorForCreation);
         try
         {
-            var savedActor = await _actorRepository.SaveActor(actorToSave);
-            var expandoObj = savedActor.ShapeDataForActor("") as IDictionary<string, object>;
+            var savedActor = await _actorRepository.SaveActor(_mapper.Map<Entity.Actor>(actorForCreation));
+            var response = _mapper.Map<Actor>(savedActor).ShapeDataForActor("") as IDictionary<string, object>;
             var links = CreateLinksForActor(savedActor.Id);
-            expandoObj.Add("links", links);
-            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, expandoObj);
+            response.Add("links", links);
+            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, savedActor);
         }
         catch (Exception e)
         {
@@ -174,7 +167,6 @@ public class ActorsController : ControllerBase
     /// <response code="400">If actorId is wrong</response>
     /// <response code="404">If actor not found with actorId</response>
     [HttpPut("{actorId}", Name = nameof(FullUpdateActor))]
-    [ActorResultFilter]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -194,7 +186,7 @@ public class ActorsController : ControllerBase
             if (!isUpdated)
                 throw new InvalidOperationException(nameof(isUpdated));
             var links = CreateLinksForActor(actorId);
-            var response = actorFromRepo.ShapeDataForActor("") as IDictionary<string, object>;
+            var response = _mapper.Map<Actor>(actorFromRepo).ShapeDataForActor("") as IDictionary<string, object>;
             response.Add("links", links);
             return Ok(response);
         }
