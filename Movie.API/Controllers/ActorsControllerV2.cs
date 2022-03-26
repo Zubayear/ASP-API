@@ -1,9 +1,11 @@
 using AutoMapper;
+using Marvin.Cache.Headers;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using Movie.API.Extensions;
 using Movie.API.Models;
 using Movie.API.Services;
@@ -13,8 +15,11 @@ namespace Movie.API.Controllers;
 [ApiVersion("2.0")]
 [ApiController]
 [Route("api/actors", Order = 2)]
-[Produces("application/json", "application/xml")]
+[Produces("application/json", "application/xml", "application/vnd.drill.hateoas+json")]
 [Consumes("application/json", "application/json-patch+json", "application/*+json")]
+// [ResponseCache(CacheProfileName = "240SecCP")]
+[HttpCacheExpiration(CacheLocation = CacheLocation.Public, MaxAge = 1000)]
+[HttpCacheValidation(MustRevalidate = true)]
 public class ActorsControllerV2 : ControllerBase
 {
     private readonly IActorRepository _actorRepository;
@@ -38,13 +43,19 @@ public class ActorsControllerV2 : ControllerBase
     [HttpGet(Name = nameof(GetAllActors))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    // [ResponseCache(Duration = 120)]
     public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors(
+        [FromHeader(Name = "Accept")] string mediaType,
         [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
         _logger.LogInformation("Received ActorsControllerV2.GetActors request");
+        if (!MediaTypeHeaderValue.TryParse(mediaType, out var parsedMediaType))
+            return BadRequest(new { Message = "Wrong Accept Header" });
         try
         {
             var actorsFromRepo = await _actorRepository.GetActors();
+            if (parsedMediaType.MediaType != "application/vnd.drill.hateoas+json")
+                return Ok(_mapper.Map<IEnumerable<Actor>>(actorsFromRepo));
             var shapedActors = _mapper.Map<IEnumerable<Actor>>(actorsFromRepo)
                 .ShapeData("");
             var shapedActorWithLinks = shapedActors.Select(actor =>
@@ -78,15 +89,22 @@ public class ActorsControllerV2 : ControllerBase
     [HttpGet("{actorId}", Name = nameof(GetActor))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [HttpCacheExpiration(CacheLocation = CacheLocation.Public, MaxAge = 900)]
+    [HttpCacheValidation(MustRevalidate = false)]
     public async Task<IActionResult> GetActor([FromRoute] Guid actorId,
+        [FromHeader(Name = "Accept")] string mediaType,
         [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
         _logger.LogInformation("Received ActorsControllerV2.GetActor request: {ActorId}", actorId);
         if (!TryValidateModel(actorId))
             return BadRequest(new { Message = "Actor Id not valid" });
+        if (!MediaTypeHeaderValue.TryParse(mediaType, out var parsedMediaType))
+            return BadRequest(new { Message = "Wrong Accept Header" });
         try
         {
             var actorFromRepo = await _actorRepository.GetActorById(actorId);
+            if (parsedMediaType.MediaType != "application/vnd.drill.hateoas+json")
+                return Ok(_mapper.Map<Actor>(actorFromRepo));
             var links = CreateLinksForActor(actorId);
             var response = _mapper.Map<Actor>(actorFromRepo).ShapeDataForActor("") as IDictionary<string, object>;
             response.Add("links", links);
@@ -112,18 +130,23 @@ public class ActorsControllerV2 : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<Actor>> CreateActor(ActorForCreation actorForCreation,
+        [FromHeader(Name = "Accept")] string mediaType,
         [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
         _logger.LogInformation("Received ActorsControllerV2.CreateActor request: {Actor}", actorForCreation);
         if (!TryValidateModel(actorForCreation))
             return BadRequest(new { Message = "Invalid actor to create" });
+        if (!MediaTypeHeaderValue.TryParse(mediaType, out var parsedMediaType))
+            return BadRequest(new { Message = "Wrong Accept Header" });
         try
         {
             var savedActor = await _actorRepository.SaveActor(_mapper.Map<Entity.Actor>(actorForCreation));
+            if (parsedMediaType.MediaType != "application/vnd.drill.hateoas+json")
+                return Ok(_mapper.Map<Actor>(savedActor));
             var response = _mapper.Map<Actor>(savedActor).ShapeDataForActor("") as IDictionary<string, object>;
             var links = CreateLinksForActor(savedActor.Id);
             response.Add("links", links);
-            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, savedActor);
+            return CreatedAtRoute(nameof(GetActor), new { actorId = savedActor.Id }, response);
         }
         catch (Exception e)
         {
@@ -180,6 +203,7 @@ public class ActorsControllerV2 : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Actor>> FullUpdateActor([FromRoute] Guid actorId,
+        [FromHeader(Name = "Accept")] string mediaType,
         ActorForUpdate actorForUpdate, [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
         _logger.LogInformation("Received ActorsControllerV2.FullUpdateActor request: {AuthorId}; {ActorUpdate}",
@@ -187,6 +211,8 @@ public class ActorsControllerV2 : ControllerBase
             actorForUpdate);
         if (!TryValidateModel(actorId) && !TryValidateModel(actorForUpdate))
             return BadRequest(new { Message = "Actor Id or Actor invalid" });
+        if (!MediaTypeHeaderValue.TryParse(mediaType, out var parsedMediaType))
+            return BadRequest(new { Message = "Wrong Accept Header" });
         try
         {
             var actorFromRepo = await _actorRepository.GetActorById(actorId);
@@ -195,6 +221,8 @@ public class ActorsControllerV2 : ControllerBase
             var isUpdated = await _actorRepository.SaveChanges();
             if (!isUpdated)
                 throw new InvalidOperationException(nameof(isUpdated));
+            if (parsedMediaType.MediaType != "application/vnd.drill.hateoas+json")
+                return Ok(_mapper.Map<Actor>(actorFromRepo));
             var links = CreateLinksForActor(actorId);
             var response = _mapper.Map<Actor>(actorFromRepo).ShapeDataForActor("") as IDictionary<string, object>;
             response.Add("links", links);

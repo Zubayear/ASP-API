@@ -1,7 +1,7 @@
-using System.Net.Security;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -15,8 +15,20 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-builder.Services.AddControllers(options => { options.ReturnHttpNotAcceptable = true; }).AddNewtonsoftJson(options =>
+builder.Services.AddHttpCacheHeaders(options =>
+{
+    options.CacheLocation = Marvin.Cache.Headers.CacheLocation.Private;
+    options.MaxAge = 600;
+}, options => { options.MustRevalidate = true; });
+builder.Services.AddControllers(options =>
+    {
+        options.ReturnHttpNotAcceptable = true;
+        options.CacheProfiles.Add("240SecCP", new CacheProfile
+        {
+            Duration = 240
+        });
+    })
+    .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
         options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
@@ -56,8 +68,16 @@ builder.Services.AddSwaggerGen(options =>
                     DefaultValue = null
                 });
             }
+
         return first;
     });
+});
+
+builder.Services.Configure<MvcOptions>(options =>
+{
+    var newtonsoftJsonOutputFormatter =
+        options.OutputFormatters.OfType<NewtonsoftJsonOutputFormatter>().FirstOrDefault();
+    newtonsoftJsonOutputFormatter?.SupportedMediaTypes.Add("application/vnd.drill.hateoas+json");
 });
 
 builder.Services.AddApiVersioning(options =>
@@ -67,6 +87,8 @@ builder.Services.AddApiVersioning(options =>
     options.AssumeDefaultVersionWhenUnspecified = true;
     options.ApiVersionReader = new HeaderApiVersionReader("API-Version");
 });
+
+builder.Services.AddResponseCaching();
 
 // Custom Configuration starts here
 builder.Services.AddDbContext<MovieContext>(optionsBuilder =>
@@ -99,6 +121,9 @@ builder.Services.AddAuthentication("Bearer")
     });
 var app = builder.Build();
 
+// app.UseResponseCaching();
+
+app.UseHttpCacheHeaders();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
