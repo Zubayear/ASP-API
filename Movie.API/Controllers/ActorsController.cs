@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -12,6 +13,7 @@ using Actor = Movie.API.Entity.Actor;
 
 namespace Movie.API.Controllers;
 
+[Authorize]
 [ApiVersion("1.0")]
 [ApiController]
 // [Route("api/v{v:apiVersion}/actors", Order = 1)]

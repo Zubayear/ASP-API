@@ -38,9 +38,10 @@ public class ActorsControllerV2 : ControllerBase
     [HttpGet(Name = nameof(GetAllActors))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors()
+    public async Task<ActionResult<IEnumerable<Actor>>> GetAllActors(
+        [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.GetActors request");
+        _logger.LogInformation("Received ActorsControllerV2.GetActors request");
         try
         {
             var actorsFromRepo = await _actorRepository.GetActors();
@@ -53,11 +54,16 @@ public class ActorsControllerV2 : ControllerBase
                 actorAsDictionary.Add("links", actorLinks);
                 return actorAsDictionary;
             });
-            return Ok(shapedActorWithLinks);
+            var response = new
+            {
+                values = shapedActorWithLinks,
+                total = actorsFromRepo.Count()
+            };
+            return Ok(response);
         }
         catch (Exception e)
         {
-            _logger.LogError("Error Occurred ActorsController.GetActors: {Message}", e.Message);
+            _logger.LogError("Error Occurred ActorsControllerV2.GetActors: {Message}", e.Message);
             return NotFound(new { Message = "failed getting all actors" });
         }
     }
@@ -72,9 +78,10 @@ public class ActorsControllerV2 : ControllerBase
     [HttpGet("{actorId}", Name = nameof(GetActor))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetActor([FromRoute] Guid actorId)
+    public async Task<IActionResult> GetActor([FromRoute] Guid actorId,
+        [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.GetActor request: {ActorId}", actorId);
+        _logger.LogInformation("Received ActorsControllerV2.GetActor request: {ActorId}", actorId);
         if (!TryValidateModel(actorId))
             return BadRequest(new { Message = "Actor Id not valid" });
         try
@@ -87,7 +94,7 @@ public class ActorsControllerV2 : ControllerBase
         }
         catch (Exception e)
         {
-            _logger.LogError("Error Occurred ActorsController.GetActor: {Message}", e.Message);
+            _logger.LogError("Error Occurred ActorsControllerV2.GetActor: {Message}", e.Message);
             return NotFound(new { Message = "failed getting actor" });
         }
     }
@@ -104,9 +111,10 @@ public class ActorsControllerV2 : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<Actor>> CreateActor(ActorForCreation actorForCreation)
+    public async Task<ActionResult<Actor>> CreateActor(ActorForCreation actorForCreation,
+        [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.CreateActor request: {Actor}", actorForCreation);
+        _logger.LogInformation("Received ActorsControllerV2.CreateActor request: {Actor}", actorForCreation);
         if (!TryValidateModel(actorForCreation))
             return BadRequest(new { Message = "Invalid actor to create" });
         try
@@ -119,7 +127,7 @@ public class ActorsControllerV2 : ControllerBase
         }
         catch (Exception e)
         {
-            _logger.LogError("Error Occurred ActorsController.GetActor: {Message}", e.Message);
+            _logger.LogError("Error Occurred ActorsControllerV2.GetActor: {Message}", e.Message);
             return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "failed creating actor" });
         }
     }
@@ -135,9 +143,10 @@ public class ActorsControllerV2 : ControllerBase
     [HttpDelete("{actorId}", Name = nameof(RemoveActor))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult> RemoveActor([FromRoute] Guid actorId)
+    public async Task<ActionResult> RemoveActor([FromRoute] Guid actorId,
+        [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.RemoveActor request: {AuthorId}", actorId);
+        _logger.LogInformation("Received ActorsControllerV2.RemoveActor request: {AuthorId}", actorId);
         if (!TryValidateModel(actorId))
             return BadRequest(new { Message = $"{actorId} not found" });
         try
@@ -149,7 +158,7 @@ public class ActorsControllerV2 : ControllerBase
         }
         catch (Exception e)
         {
-            _logger.LogError("Error Occurred ActorsController.RemoveActor: {Message}", e.Message);
+            _logger.LogError("Error Occurred ActorsControllerV2.RemoveActor: {Message}", e.Message);
             return NotFound(new { Message = "failed removing actor" });
         }
 
@@ -171,9 +180,10 @@ public class ActorsControllerV2 : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Actor>> FullUpdateActor([FromRoute] Guid actorId,
-        ActorForUpdate actorForUpdate)
+        ActorForUpdate actorForUpdate, [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.FullUpdateActor request: {AuthorId}; {ActorUpdate}", actorId,
+        _logger.LogInformation("Received ActorsControllerV2.FullUpdateActor request: {AuthorId}; {ActorUpdate}",
+            actorId,
             actorForUpdate);
         if (!TryValidateModel(actorId) && !TryValidateModel(actorForUpdate))
             return BadRequest(new { Message = "Actor Id or Actor invalid" });
@@ -192,7 +202,7 @@ public class ActorsControllerV2 : ControllerBase
         }
         catch (Exception e)
         {
-            _logger.LogError("Error Occurred ActorsController.FullUpdateActor: {Message}", e.Message);
+            _logger.LogError("Error Occurred ActorsControllerV2.FullUpdateActor: {Message}", e.Message);
             return NotFound(new { Message = "failed updating actor" });
         }
     }
@@ -208,9 +218,10 @@ public class ActorsControllerV2 : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<Actor>> PartiallyUpdateActor(
         Guid actorId,
-        JsonPatchDocument<ActorForUpdate> patchDocument)
+        JsonPatchDocument<ActorForUpdate> patchDocument,
+        [FromHeader(Name = "API-Version")] string apiVersion = "1")
     {
-        _logger.LogInformation("Received ActorsController.PartiallyUpdateActor request: {@Actor}", patchDocument);
+        _logger.LogInformation("Received ActorsControllerV2.PartiallyUpdateActor request: {ActorId}", actorId);
         if (!TryValidateModel(patchDocument))
             return BadRequest(new { Message = "Actor is invalid" });
         var actorFromRepo = await _actorRepository.GetActorById(actorId);

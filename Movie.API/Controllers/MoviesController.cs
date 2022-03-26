@@ -6,6 +6,7 @@ using Movie.API.Services;
 
 namespace Movie.API.Controllers;
 
+[ApiVersion("1.0")]
 [ApiController]
 [Route("api/actors/{actorId}/movies/")]
 [Produces("application/json", "application/xml")]

@@ -19,6 +19,7 @@ public static class ActorExtensions
                 var value = propertyInfo.GetValue(source);
                 ((IDictionary<string, object>)response).Add(propertyInfo.Name, value);
             }
+
             return response;
         }
 
